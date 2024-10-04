@@ -1,0 +1,509 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VPC creation with 3 AZs'
+
+Parameters:
+  VpcCidrBlock:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR block for the VPC
+  Public1CidrBlock:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: CIDR block for the public subnet in AZ1
+  Public2CidrBlock:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: CIDR block for the public subnet in AZ2
+  Public3CidrBlock:
+    Type: String
+    Default: 10.0.3.0/24
+    Description: CIDR block for the public subnet in AZ3
+  Application1CidrBlock:
+    Type: String
+    Default: 10.0.11.0/24
+    Description: CIDR block for the application subnet in AZ1
+  Application2CidrBlock:
+    Type: String
+    Default: 10.0.12.0/24
+    Description: CIDR block for the application subnet in AZ2
+  Application3CidrBlock:
+    Type: String
+    Default: 10.0.13.0/24
+    Description: CIDR block for the application subnet in AZ3
+  Backend1CidrBlock:
+    Type: String
+    Default: 10.0.21.0/24
+    Description: CIDR block for the backend subnet in AZ1
+  Backend2CidrBlock:
+    Type: String
+    Default: 10.0.22.0/24
+    Description: CIDR block for the backend subnet in AZ2
+  Backend3CidrBlock:
+    Type: String
+    Default: 10.0.23.0/24
+    Description: CIDR block for the backend subnet in AZ3
+  Prefix:
+    Type: String
+    Default: prefix
+    Description: Prefix for resource names
+
+Resources:
+  RandomStringFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import random
+          import string
+          import cfnresponse
+          def handler(event, context):
+            if event['RequestType'] == 'Create':
+              random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=4))
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, {'RandomString': random_string})
+            else:
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+      Runtime: python3.8
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  RandomString:
+    Type: Custom::RandomString
+    Properties:
+      ServiceToken: !GetAtt RandomStringFunction.Arn
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-Vpc-${RandomString.RandomString}"
+
+  DHCPOptionsSet:
+    Type: AWS::EC2::DHCPOptions
+    Properties:
+      DomainNameServers: 
+        - AmazonProvidedDNS
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-DHCPOptions-${RandomString.RandomString}"
+
+  VPCDHCPOptionsAssociation:
+    Type: AWS::EC2::VPCDHCPOptionsAssociation
+    Properties:
+      VpcId: !Ref Vpc
+      DhcpOptionsId: !Ref DHCPOptionsSet
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-IGW-${RandomString.RandomString}"
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  Public1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref Public1CidrBlock
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-Public1-${RandomString.RandomString}"
+
+  Public2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref Public2CidrBlock
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-Public2-${RandomString.RandomString}"
+
+  Public3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref Public3CidrBlock
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-Public3-${RandomString.RandomString}"
+
+  Application1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref Application1CidrBlock
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-Application1-${RandomString.RandomString}"
+
+  Application2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref Application2CidrBlock
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-Application2-${RandomString.RandomString}"
+
+  Application3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref Application3CidrBlock
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-Application3-${RandomString.RandomString}"
+
+  Backend1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref Backend1CidrBlock
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-Backend1-${RandomString.RandomString}"
+
+  Backend2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref Backend2CidrBlock
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-Backend2-${RandomString.RandomString}"
+
+  Backend3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref Backend3CidrBlock
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-Backend3-${RandomString.RandomString}"
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-PublicRT-${RandomString.RandomString}"
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  Public1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Public1
+      RouteTableId: !Ref PublicRouteTable
+
+  Public2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Public2
+      RouteTableId: !Ref PublicRouteTable
+
+  Public3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Public3
+      RouteTableId: !Ref PublicRouteTable
+
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-NAT1EIP-${RandomString.RandomString}"
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-NAT2EIP-${RandomString.RandomString}"
+
+  NatGateway3EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-NAT3EIP-${RandomString.RandomString}"
+
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref Public1
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-NAT1-${RandomString.RandomString}"
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref Public2
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-NAT2-${RandomString.RandomString}"
+
+  NatGateway3:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway3EIP.AllocationId
+      SubnetId: !Ref Public3
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-NAT3-${RandomString.RandomString}"
+
+  ApplicationRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-ApplicationRT1-${RandomString.RandomString}"
+
+  ApplicationRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-ApplicationRT2-${RandomString.RandomString}"
+
+  ApplicationRouteTable3:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-ApplicationRT3-${RandomString.RandomString}"
+
+  ApplicationRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref ApplicationRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-ApplicationRoute1-${RandomString.RandomString}"
+
+  ApplicationRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref ApplicationRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-ApplicationRoute2-${RandomString.RandomString}"
+
+  ApplicationRoute3:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref ApplicationRouteTable3
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway3
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-ApplicationRoute3-${RandomString.RandomString}"
+
+  Application1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Application1
+      RouteTableId: !Ref ApplicationRouteTable1
+
+  Application2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Application2
+      RouteTableId: !Ref ApplicationRouteTable2
+
+  Application3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Application3
+      RouteTableId: !Ref ApplicationRouteTable3
+
+  BackendRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-BackendRT1-${RandomString.RandomString}"
+
+  BackendRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-BackendRT2-${RandomString.RandomString}"
+
+  BackendRouteTable3:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-BackendRT3-${RandomString.RandomString}"
+
+  BackendRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref BackendRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-BackendRoute1-${RandomString.RandomString}"
+
+  BackendRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref BackendRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-BackendRoute2-${RandomString.RandomString}"
+
+  BackendRoute3:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref BackendRouteTable3
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway3
+      Tags:
+        - Key: Name
+          Value: !Sub "${Prefix}-BackendRoute3-${RandomString.RandomString}"
+
+  Backend1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Backend1
+      RouteTableId: !Ref BackendRouteTable1
+
+  Backend2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Backend2
+      RouteTableId: !Ref BackendRouteTable2
+
+  Backend3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Backend3
+      RouteTableId: !Ref BackendRouteTable3
+
+Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !Ref Vpc
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcId"
+  Public1Id:
+    Description: Public Subnet 1 ID
+    Value: !Ref Public1
+    Export:
+      Name: !Sub "${AWS::StackName}-Public1Id"
+  Public2Id:
+    Description: Public Subnet 2 ID
+    Value: !Ref Public2
+    Export:
+      Name: !Sub "${AWS::StackName}-Public2Id"
+  Public3Id:
+    Description: Public Subnet 3 ID
+    Value: !Ref Public3
+    Export:
+      Name: !Sub "${AWS::StackName}-Public3Id"
+  Application1Id:
+    Description: Application Subnet 1 ID
+    Value: !Ref Application1
+    Export:
+      Name: !Sub "${AWS::StackName}-Application1Id"
+  Application2Id:
+    Description: Application Subnet 2 ID
+    Value: !Ref Application2
+    Export:
+      Name: !Sub "${AWS::StackName}-Application2Id"
+  Application3Id:
+    Description: Application Subnet 3 ID
+    Value: !Ref Application3
+    Export:
+      Name: !Sub "${AWS::StackName}-Application3Id"
+  Backend1Id:
+    Description: Backend Subnet 1 ID
+    Value: !Ref Backend1
+    Export:
+      Name: !Sub "${AWS::StackName}-Backend1Id"
+  Backend2Id:
+    Description: Backend Subnet 2 ID
+    Value: !Ref Backend2
+    Export:
+      Name: !Sub "${AWS::StackName}-Backend2Id"
+  Backend3Id:
+    Description: Backend Subnet 3 ID
+    Value: !Ref Backend3
+    Export:
+      Name: !Sub "${AWS::StackName}-Backend3Id"
+  RandomString:
+    Description: Generated Random String
+    Value: !GetAtt RandomString.RandomString
