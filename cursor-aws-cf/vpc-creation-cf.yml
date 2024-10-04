@@ -94,6 +94,21 @@ Resources:
         - Key: Name
           Value: !Sub "${Prefix}-Vpc-${RandomString.RandomString}"
 
+  AvailabilityZone1:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Properties:
+      Name: !Select [0, !GetAZs '']
+
+  AvailabilityZone2:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Properties:
+      Name: !Select [1, !GetAZs '']
+
+  AvailabilityZone3:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Properties:
+      Name: !Select [2, !GetAZs '']
+
   DHCPOptionsSet:
     Type: AWS::EC2::DHCPOptions
     Properties:
@@ -126,7 +141,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      AvailabilityZone: !Ref AvailabilityZone1
       CidrBlock: !Ref Public1CidrBlock
       MapPublicIpOnLaunch: true
       Tags:
@@ -137,7 +152,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      AvailabilityZone: !Ref AvailabilityZone2
       CidrBlock: !Ref Public2CidrBlock
       MapPublicIpOnLaunch: true
       Tags:
@@ -148,7 +163,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      AvailabilityZone: !Ref AvailabilityZone3
       CidrBlock: !Ref Public3CidrBlock
       MapPublicIpOnLaunch: true
       Tags:
@@ -159,7 +174,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      AvailabilityZone: !Ref AvailabilityZone1
       CidrBlock: !Ref Application1CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
@@ -170,7 +185,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      AvailabilityZone: !Ref AvailabilityZone2
       CidrBlock: !Ref Application2CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
@@ -181,7 +196,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      AvailabilityZone: !Ref AvailabilityZone3
       CidrBlock: !Ref Application3CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
@@ -192,7 +207,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      AvailabilityZone: !Ref AvailabilityZone1
       CidrBlock: !Ref Backend1CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
@@ -203,7 +218,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      AvailabilityZone: !Ref AvailabilityZone2
       CidrBlock: !Ref Backend2CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
@@ -214,7 +229,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      AvailabilityZone: !Ref AvailabilityZone3
       CidrBlock: !Ref Backend3CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
@@ -339,9 +354,6 @@ Resources:
       RouteTableId: !Ref ApplicationRouteTable1
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway1
-      Tags:
-        - Key: Name
-          Value: !Sub "${Prefix}-ApplicationRoute1-${RandomString.RandomString}"
 
   ApplicationRoute2:
     Type: AWS::EC2::Route
@@ -349,9 +361,6 @@ Resources:
       RouteTableId: !Ref ApplicationRouteTable2
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway2
-      Tags:
-        - Key: Name
-          Value: !Sub "${Prefix}-ApplicationRoute2-${RandomString.RandomString}"
 
   ApplicationRoute3:
     Type: AWS::EC2::Route
@@ -359,9 +368,6 @@ Resources:
       RouteTableId: !Ref ApplicationRouteTable3
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway3
-      Tags:
-        - Key: Name
-          Value: !Sub "${Prefix}-ApplicationRoute3-${RandomString.RandomString}"
 
   Application1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -411,9 +417,6 @@ Resources:
       RouteTableId: !Ref BackendRouteTable1
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway1
-      Tags:
-        - Key: Name
-          Value: !Sub "${Prefix}-BackendRoute1-${RandomString.RandomString}"
 
   BackendRoute2:
     Type: AWS::EC2::Route
@@ -421,9 +424,6 @@ Resources:
       RouteTableId: !Ref BackendRouteTable2
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway2
-      Tags:
-        - Key: Name
-          Value: !Sub "${Prefix}-BackendRoute2-${RandomString.RandomString}"
 
   BackendRoute3:
     Type: AWS::EC2::Route
@@ -431,9 +431,6 @@ Resources:
       RouteTableId: !Ref BackendRouteTable3
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway3
-      Tags:
-        - Key: Name
-          Value: !Sub "${Prefix}-BackendRoute3-${RandomString.RandomString}"
 
   Backend1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
