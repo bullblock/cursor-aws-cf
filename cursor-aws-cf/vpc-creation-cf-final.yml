@@ -86,6 +86,9 @@ Resources:
                   - acm:ImportCertificate
                   - acm:ListCertificates
                   - acm:DescribeCertificate
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
                 Resource: '*'
 
   GenerateRandomStringFunction:
@@ -516,6 +519,16 @@ Resources:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-client-vpn-sg-${RandomString.RandomString}
 
+  # Add this new CloudWatch Log Group resource
+  ClientVpnLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub ${ResourcePrefix}-client-vpn-logs-${RandomString.RandomString}
+      RetentionInDays: 30
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-client-vpn-logs-${RandomString.RandomString}
+
   ClientVpnEndpoint:
     Type: AWS::EC2::ClientVpnEndpoint
     DependsOn: CertificateImportTrigger
@@ -527,8 +540,11 @@ Resources:
           MutualAuthentication:
             ClientRootCertificateChainArn: !GetAtt CertificateImportTrigger.ClientCertificateArn
       ConnectionLogOptions: 
-        Enabled: false
+        Enabled: true
+        CloudwatchLogGroup: !Ref ClientVpnLogGroup
+        CloudwatchLogStream: !Sub ${ResourcePrefix}-client-vpn-log-stream-${RandomString.RandomString}
       Description: VPN for secure remote access
+      SplitTunnel: true
       VpcId: !Ref VPC
       SecurityGroupIds:
         - !Ref ClientVpnSecurityGroup
