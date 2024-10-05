@@ -515,6 +515,10 @@ Resources:
           FromPort: -1
           ToPort: -1
           CidrIp: !Ref VpcCidr
+        - IpProtocol: '-1'
+          FromPort: -1
+          ToPort: -1
+          CidrIp: !Ref ClientVpnCidr
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-client-vpn-sg-${RandomString.RandomString}
@@ -556,6 +560,7 @@ Resources:
       SecurityGroupIds:
         - !Ref ClientVpnSecurityGroup
       VpnPort: 443
+      TransportProtocol: tcp
       TagSpecifications:
         - ResourceType: client-vpn-endpoint
           Tags:
@@ -581,6 +586,13 @@ Resources:
       SubnetId: !Ref BackendSubnet3
 
   ClientVpnAuthorizationRule:
+    Type: AWS::EC2::ClientVpnAuthorizationRule
+    Properties:
+      ClientVpnEndpointId: !Ref ClientVpnEndpoint
+      AuthorizeAllGroups: true
+      TargetNetworkCidr: !Ref ClientVpnCidr
+
+  ClientVpnAuthorizationRuleVpc:
     Type: AWS::EC2::ClientVpnAuthorizationRule
     Properties:
       ClientVpnEndpointId: !Ref ClientVpnEndpoint
