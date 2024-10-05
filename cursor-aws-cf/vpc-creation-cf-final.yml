@@ -519,7 +519,6 @@ Resources:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-client-vpn-sg-${RandomString.RandomString}
 
-  # Add this new CloudWatch Log Group resource
   ClientVpnLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -529,9 +528,17 @@ Resources:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-client-vpn-logs-${RandomString.RandomString}
 
+  ClientVpnLogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref ClientVpnLogGroup
+      LogStreamName: !Sub ${ResourcePrefix}-client-vpn-log-stream-${RandomString.RandomString}
+
   ClientVpnEndpoint:
     Type: AWS::EC2::ClientVpnEndpoint
-    DependsOn: CertificateImportTrigger
+    DependsOn: 
+      - CertificateImportTrigger
+      - ClientVpnLogStream
     Properties:
       ClientCidrBlock: !Ref ClientVpnCidr
       ServerCertificateArn: !GetAtt CertificateImportTrigger.ServerCertificateArn
@@ -542,7 +549,7 @@ Resources:
       ConnectionLogOptions: 
         Enabled: true
         CloudwatchLogGroup: !Ref ClientVpnLogGroup
-        CloudwatchLogStream: !Sub ${ResourcePrefix}-client-vpn-log-stream-${RandomString.RandomString}
+        CloudwatchLogStream: !Ref ClientVpnLogStream
       Description: VPN for secure remote access
       SplitTunnel: true
       VpcId: !Ref VPC
